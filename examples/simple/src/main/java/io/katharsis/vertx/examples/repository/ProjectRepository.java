@@ -4,9 +4,11 @@ package io.katharsis.vertx.examples.repository;
 import io.katharsis.queryParams.QueryParams;
 import io.katharsis.repository.ResourceRepository;
 import io.katharsis.vertx.examples.domain.Project;
+import io.katharsis.vertx.examples.domain.SimpleAttribute;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 @Slf4j
 public class ProjectRepository implements ResourceRepository<Project, Long> {
@@ -27,7 +29,9 @@ public class ProjectRepository implements ResourceRepository<Project, Long> {
     public Iterable<Project> findAll(Iterable<Long> longs, QueryParams queryParams) {
         log.info("Find all {} {}", longs, queryParams);
         return Arrays.asList(
-                Project.builder().id(1L).name("ProfilesRD").build(),
+                Project.builder().id(1L).name("ProfilesRD")
+                    .simpleAttributes(Collections.singletonList(
+                        SimpleAttribute.builder().title("some title").value("some value").build())).build(),
                 Project.builder().id(2L).name("Great people inside").build()
         );
     }
