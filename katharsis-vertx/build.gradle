@@ -2,6 +2,7 @@ import java.text.SimpleDateFormat
 
 plugins {
     id 'java'
+    id 'osgi'
     id 'idea'
     id "com.jfrog.bintray" version "1.6"
     id 'maven-publish'
@@ -63,6 +64,11 @@ task sourceJar(type: Jar, dependsOn: classes) {
     from sourceSets.main.allJava
 }
 
+task javadocJar(type: Jar, dependsOn: 'javadoc') {
+    from javadoc.destinationDir
+    classifier = 'javadoc'
+}
+
 publishing {
     publications {
         katharsis(MavenPublication) {
@@ -73,9 +79,17 @@ publishing {
         katharsisSources(MavenPublication) {
             groupId 'io.katharsis'
             artifactId 'katharsis-vertx'
-            from components.java
+
             artifact sourceJar {
                 classifier 'sources'
+            }
+        }
+        katharsisSources(MavenPublication) {
+            groupId 'io.katharsis'
+            artifactId 'katharsis-vertx'
+
+            artifact javadocJar {
+                classifier 'javadoc'
             }
         }
     }
