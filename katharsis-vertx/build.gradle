@@ -34,7 +34,7 @@ bintray {
 
     user = bintrayUser
     key = bintrayApiKey
-    publications = ['katharsis', 'katharsisSources']
+    publications = ['katharsis']
 
     publish = true
 
