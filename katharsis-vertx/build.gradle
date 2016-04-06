@@ -72,6 +72,7 @@ task javadocJar(type: Jar, dependsOn: 'javadoc') {
 
 pom {
     description 'Vertx integration for Katharsis json-api library'
+    url 'https://github.com/katharsis-project/katharsis-vertx'
     licenses {
         license {
             name "The Apache License, Version 2.0"
