@@ -47,7 +47,7 @@ public class KatharsisHandler implements Handler<RoutingContext> {
 
     public JsonPath buildPath(@NonNull String path) {
         //TODO; path need to be cleaned
-        String cleaned = Paths.get(path).toString();
+        String cleaned = Paths.get(path).toString().replace('\\', '/');
         String transformed = cleaned.substring(webPath.length());
         log.trace("Path is {}", transformed);
         return pathBuilder.buildPath(transformed);
