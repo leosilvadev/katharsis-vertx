@@ -3,3 +3,5 @@ rootProject.name = 'katharsis-vertx-aggregator'
 include ':katharsis-vertx'
 include 'examples:simple'
 include 'examples:spring'
+include 'katharsis-vertx-spring'
+

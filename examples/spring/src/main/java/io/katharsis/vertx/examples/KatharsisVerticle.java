@@ -1,7 +1,7 @@
 package io.katharsis.vertx.examples;
 
+import io.katharsis.vertx.KatharsisHandler;
 import io.katharsis.vertx.KatharsisHandlerFactory;
-import io.katharsis.vertx.KatharsisRestApi;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -30,13 +30,10 @@ public class KatharsisVerticle extends AbstractVerticle {
                             "<a href='/api/projects'>/api/projects</a>");
         });
 
-        KatharsisHandlerFactory katharsisGlue = KatharsisHandlerFactory.create(Main.class.getPackage().getName(), "/api",
+        KatharsisHandler katharsisGlue = KatharsisHandlerFactory.create(Main.class.getPackage().getName(), "/api",
                 Json.mapper, new CustomParameterProviderFactory(Json.mapper, context));
 
-        Router katharsisRouter = KatharsisRestApi.createRouter(vertx, katharsisGlue);
-
-        router.mountSubRouter("/api/projects", katharsisRouter);
-        router.mountSubRouter("/api/tasks", katharsisRouter);
+        router.route("/api/*").handler(katharsisGlue);
 
         // Create the HTTP server and pass the "accept" method to the request handler.
         vertx.createHttpServer()

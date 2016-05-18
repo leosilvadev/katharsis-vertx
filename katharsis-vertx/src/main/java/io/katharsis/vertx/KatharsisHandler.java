@@ -1,23 +1,19 @@
 package io.katharsis.vertx;
 
-import io.katharsis.dispatcher.controller.BaseController;
-import io.katharsis.errorhandling.ErrorData;
-import io.katharsis.errorhandling.ErrorResponse;
-import io.katharsis.errorhandling.exception.KatharsisMatchingException;
-import io.katharsis.errorhandling.mapper.ExceptionMapperRegistry;
-import io.katharsis.errorhandling.mapper.JsonApiExceptionMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.katharsis.dispatcher.RequestDispatcher;
 import io.katharsis.queryParams.QueryParams;
 import io.katharsis.queryParams.QueryParamsBuilder;
 import io.katharsis.repository.RepositoryMethodParameterProvider;
 import io.katharsis.request.dto.RequestBody;
 import io.katharsis.request.path.JsonPath;
 import io.katharsis.request.path.PathBuilder;
-import io.katharsis.response.BaseResponse;
-import io.katharsis.utils.java.Optional;
+import io.katharsis.response.BaseResponseContext;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.json.Json;
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.EncodeException;
 import io.vertx.ext.web.RoutingContext;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -38,26 +34,48 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class KatharsisHandler implements Handler<RoutingContext> {
 
+    private final ObjectMapper mapper;
     private final QueryParamsBuilder builder;
-    private final ParameterProviderFactory parameterProviderFactory;
-    private final PathBuilder pathBuilder;
-    private final ExceptionMapperRegistry exceptionMapperRegistry;
-    private final BaseController controller;
     private final String webPath;
+    private final PathBuilder pathBuilder;
+    private final ParameterProviderFactory parameterProviderFactory;
+    private final RequestDispatcher requestDispatcher;
 
-    public JsonPath buildPath(@NonNull String path) {
-        //TODO; path need to be cleaned
+    @Override
+    public void handle(RoutingContext ctx) {
+
+        JsonPath jsonPath = buildPath(ctx);
+        String requestMethod = ctx.request().method().name();
+        QueryParams queryParams = createQueryParams(ctx);
+        RepositoryMethodParameterProvider provider = parameterProviderFactory.provider(ctx);
+        RequestBody body = requestBody(ctx.getBodyAsString());
+
+        try {
+            BaseResponseContext response = requestDispatcher.dispatchRequest(jsonPath, requestMethod, queryParams, provider, body);
+
+            ctx.response()
+                    .setStatusCode(response.getHttpStatus())
+                    .putHeader(HttpHeaders.CONTENT_TYPE, JsonApiMediaTypeHandler.APPLICATION_JSON_API)
+                    .end(encode(response.getResponse()));
+
+        } catch (Exception e) {
+            throw new KatharsisVertxException("Exception during dispatch " + e.getMessage());
+        }
+    }
+
+    protected JsonPath buildPath(RoutingContext ctx) {
+        return buildPath(ctx.request().path());
+    }
+
+    protected JsonPath buildPath(@NonNull String path) {
+        //TODO: ieugen path need to be cleaned
         String cleaned = Paths.get(path).toString().replace('\\', '/');
         String transformed = cleaned.substring(webPath.length());
         log.trace("Path is {}", transformed);
         return pathBuilder.buildPath(transformed);
     }
 
-    public JsonPath buildPath(RoutingContext ctx) {
-        return buildPath(ctx.request().path());
-    }
-
-    public QueryParams createQueryParams(RoutingContext ctx) {
+    protected QueryParams createQueryParams(RoutingContext ctx) {
         Map<String, Set<String>> transformed = new HashMap<>();
 
         QueryStringDecoder decoder = new QueryStringDecoder(ctx.request().uri());
@@ -68,72 +86,33 @@ public class KatharsisHandler implements Handler<RoutingContext> {
         return builder.buildQueryParams(transformed);
     }
 
-    @Override
-    public void handle(RoutingContext ctx) {
-        BaseResponse<?> response = null;
-        boolean passToMethodMatcher = false;
-        try {
-
-            JsonPath jsonPath = buildPath(ctx);
-            QueryParams queryParams = createQueryParams(ctx);
-            RepositoryMethodParameterProvider parameterProvider = parameterProviderFactory.provider(ctx);
-
-            String bodyAsString = ctx.getBodyAsString();
-            response = controller.handle(jsonPath, queryParams, parameterProvider, requestBody(bodyAsString));
-
-        } catch (KatharsisMatchingException e) {
-            log.error("Error {}", e);
-            passToMethodMatcher = true;
-        } catch (Exception e1) {
-            response = toErrorResponse(e1);
-        } finally {
-            sendResponse(ctx, response, passToMethodMatcher);
-        }
-
-    }
-
-    public BaseResponse<?> toErrorResponse(@NonNull Throwable e) {
-        return toErrorResponse(e, 422);
-    }
-
-    public BaseResponse<?> toErrorResponse(@NonNull Throwable e, int statusCode) {
-        Optional<JsonApiExceptionMapper> exceptionMapper = exceptionMapperRegistry.findMapperFor(e.getClass());
-
-        ErrorResponse errorResponse;
-        if (exceptionMapper.isPresent()) {
-            errorResponse = exceptionMapper.get().toErrorResponse(e);
-        } else {
-            errorResponse = ErrorResponse.builder()
-                    .setStatus(statusCode)
-                    .setSingleErrorData(ErrorData.builder()
-                            .setDetail(e.getMessage() + e)
-                            .build())
-                    .build();
-        }
-
-        return errorResponse;
-    }
-
-
-    void sendResponse(RoutingContext ctx, BaseResponse<?> response, boolean passToMethodMatcher) {
-        if (passToMethodMatcher) {
-            ctx.response()
-                    .setStatusCode(406)
-                    .putHeader(HttpHeaders.CONTENT_TYPE, JsonApiMediaType.APPLICATION_JSON_API)
-                    .end(Json.encode(response));
-        } else {
-            ctx.response()
-                    .setStatusCode(response.getHttpStatus())
-                    .putHeader(HttpHeaders.CONTENT_TYPE, JsonApiMediaType.APPLICATION_JSON_API)
-                    .end(Json.encode(response));
-        }
-    }
-
-    public RequestBody requestBody(String body) {
+    protected RequestBody requestBody(String body) {
         if (body == null || body.length() == 0) {
             return null;
         }
-        return Json.decodeValue(body, RequestBody.class);
+        return decodeValue(body, RequestBody.class);
+    }
+
+    /**
+     * Taken from io.vertx.json.Json.
+     */
+    protected <T> T decodeValue(String str, Class<T> clazz) throws DecodeException {
+        try {
+            return mapper.readValue(str, clazz);
+        } catch (Exception e) {
+            throw new DecodeException("Failed to decode:" + e.getMessage());
+        }
+    }
+
+    /**
+     * Taken from io.vertx.json.Json.
+     */
+    protected String encode(Object obj) throws EncodeException {
+        try {
+            return mapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new EncodeException("Failed to encode as JSON: " + e.getMessage());
+        }
     }
 
 }

@@ -30,11 +30,11 @@ allprojects {
     }
 
     ext {
-        katharsisVersion = '2.3.2'
+        katharsisVersion = '2.4.0'
         lombokVersion = '1.16.6'
         reflectionsVersion = '0.9.9'
         slf4jVersion = '1.7.13'
-        springVersion = '4.2.4.RELEASE'
+        springVersion = '4.2.5.RELEASE'
         vertxVersion = '3.2.1'
         // add these properties to your ~/.gradle/gradle.properties file
         bintrayUser = project.hasProperty('bintrayUser') ? bintrayUser : 'jenkins'
