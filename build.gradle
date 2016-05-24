@@ -27,10 +27,12 @@ allprojects {
         mavenCentral()
         jcenter()
         maven { url "http://dl.bintray.com/netdava/maven" }
+
+        mavenLocal()
     }
 
     ext {
-        katharsisVersion = '2.4.0'
+        katharsisVersion = '2.4.1-SNAPSHOT'
         lombokVersion = '1.16.6'
         reflectionsVersion = '0.9.9'
         slf4jVersion = '1.7.13'

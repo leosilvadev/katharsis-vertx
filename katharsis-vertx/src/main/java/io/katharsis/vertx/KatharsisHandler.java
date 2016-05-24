@@ -2,29 +2,20 @@ package io.katharsis.vertx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.katharsis.dispatcher.RequestDispatcher;
-import io.katharsis.queryParams.QueryParams;
-import io.katharsis.queryParams.QueryParamsBuilder;
 import io.katharsis.repository.RepositoryMethodParameterProvider;
-import io.katharsis.request.dto.RequestBody;
-import io.katharsis.request.path.JsonPath;
-import io.katharsis.request.path.PathBuilder;
+import io.katharsis.request.Request;
+import io.katharsis.request.path.JsonApiPath;
 import io.katharsis.response.BaseResponseContext;
-import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.buffer.ByteBufInputStream;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.EncodeException;
 import io.vertx.ext.web.RoutingContext;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.io.InputStream;
 
 /**
  * Vertx handler to Katharsis resource controller. Vertx delegates request processing to Katharsis controller.
@@ -35,23 +26,21 @@ import java.util.Set;
 public class KatharsisHandler implements Handler<RoutingContext> {
 
     private final ObjectMapper mapper;
-    private final QueryParamsBuilder builder;
-    private final String webPath;
-    private final PathBuilder pathBuilder;
-    private final ParameterProviderFactory parameterProviderFactory;
     private final RequestDispatcher requestDispatcher;
+    private final ParameterProviderFactory parameterProviderFactory;
+    private final String apiMountPoint;
 
     @Override
     public void handle(RoutingContext ctx) {
-
-        JsonPath jsonPath = buildPath(ctx);
-        String requestMethod = ctx.request().method().name();
-        QueryParams queryParams = createQueryParams(ctx);
-        RepositoryMethodParameterProvider provider = parameterProviderFactory.provider(ctx);
-        RequestBody body = requestBody(ctx.getBodyAsString());
-
+        InputStream body = new ByteBufInputStream(ctx.getBody().getByteBuf());
         try {
-            BaseResponseContext response = requestDispatcher.dispatchRequest(jsonPath, requestMethod, queryParams, provider, body);
+            String httpMethod = ctx.request().method().name();
+            RepositoryMethodParameterProvider parameterProvider = parameterProviderFactory.provider(ctx);
+
+            JsonApiPath path = JsonApiPath.parsePathFromStringUrl(ctx.request().absoluteURI(), apiMountPoint);
+            Request request = new Request(path, httpMethod, body, parameterProvider);
+
+            BaseResponseContext response = requestDispatcher.dispatchRequest(request);
 
             ctx.response()
                     .setStatusCode(response.getHttpStatus())
@@ -59,48 +48,8 @@ public class KatharsisHandler implements Handler<RoutingContext> {
                     .end(encode(response));
 
         } catch (Exception e) {
-            throw new KatharsisVertxException("Exception during dispatch " + e.getMessage());
-        }
-    }
-
-    protected JsonPath buildPath(RoutingContext ctx) {
-        return buildPath(ctx.request().path());
-    }
-
-    protected JsonPath buildPath(@NonNull String path) {
-        //TODO: ieugen path need to be cleaned
-        String cleaned = Paths.get(path).toString().replace('\\', '/');
-        String transformed = cleaned.substring(webPath.length());
-        log.trace("Path is {}", transformed);
-        return pathBuilder.buildPath(transformed);
-    }
-
-    protected QueryParams createQueryParams(RoutingContext ctx) {
-        Map<String, Set<String>> transformed = new HashMap<>();
-
-        QueryStringDecoder decoder = new QueryStringDecoder(ctx.request().uri());
-
-        decoder.parameters().entrySet().stream()
-                .forEach(param -> transformed.put(param.getKey(), new HashSet<>(param.getValue())));
-
-        return builder.buildQueryParams(transformed);
-    }
-
-    protected RequestBody requestBody(String body) {
-        if (body == null || body.length() == 0) {
-            return null;
-        }
-        return decodeValue(body, RequestBody.class);
-    }
-
-    /**
-     * Taken from io.vertx.json.Json.
-     */
-    protected <T> T decodeValue(String str, Class<T> clazz) throws DecodeException {
-        try {
-            return mapper.readValue(str, clazz);
-        } catch (Exception e) {
-            throw new DecodeException("Failed to decode:" + e.getMessage());
+            throw new KatharsisVertxException(
+                    String.format("Exception during dispatch: %s. \nURL: %s ", e.getMessage(), ctx.request().absoluteURI()));
         }
     }
 

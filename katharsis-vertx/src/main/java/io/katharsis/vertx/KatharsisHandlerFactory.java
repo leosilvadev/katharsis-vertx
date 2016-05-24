@@ -3,15 +3,12 @@ package io.katharsis.vertx;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Throwables;
 import io.katharsis.dispatcher.RequestDispatcher;
-import io.katharsis.dispatcher.registry.ControllerRegistry;
-import io.katharsis.dispatcher.registry.ControllerRegistryBuilder;
 import io.katharsis.errorhandling.mapper.ExceptionMapperRegistry;
 import io.katharsis.errorhandling.mapper.ExceptionMapperRegistryBuilder;
 import io.katharsis.jackson.JsonApiModuleBuilder;
 import io.katharsis.locator.SampleJsonServiceLocator;
 import io.katharsis.queryParams.DefaultQueryParamsParser;
 import io.katharsis.queryParams.QueryParamsBuilder;
-import io.katharsis.request.path.PathBuilder;
 import io.katharsis.resource.field.ResourceFieldNameTransformer;
 import io.katharsis.resource.information.ResourceInformationBuilder;
 import io.katharsis.resource.registry.ResourceRegistry;
@@ -23,9 +20,9 @@ import lombok.NonNull;
 public class KatharsisHandlerFactory {
 
     public static KatharsisHandler create(@NonNull String packagesToScan,
-                                          @NonNull String webPath) {
+                                          @NonNull String apiMountPath) {
 
-        return create(packagesToScan, webPath, Json.mapper);
+        return create(packagesToScan, apiMountPath, Json.mapper);
     }
 
     public static KatharsisHandler create(@NonNull String packagesToScan,
@@ -36,34 +33,30 @@ public class KatharsisHandlerFactory {
     }
 
     public static KatharsisHandler create(@NonNull String packagesToScan,
-                                          @NonNull String webPath,
+                                          @NonNull String apiMountPath,
                                           @NonNull ObjectMapper objectMapper,
                                           @NonNull ParameterProviderFactory parameterProviderFactory) {
 
         QueryParamsBuilder queryParamsBuilder = new QueryParamsBuilder(new DefaultQueryParamsParser());
         ExceptionMapperRegistry exceptionMapperRegistry = buildExceptionMapperRegistry(packagesToScan);
-        ResourceRegistry resourceRegistry = buildRegistry(packagesToScan, webPath);
+        ResourceRegistry resourceRegistry = buildRegistry(packagesToScan, apiMountPath);
 
         JsonApiModuleBuilder jsonApiModuleBuilder = new JsonApiModuleBuilder();
         objectMapper.registerModule(jsonApiModuleBuilder.build(resourceRegistry));
 
-        RequestDispatcher requestDispatcher = createRequestDispatcher(objectMapper, exceptionMapperRegistry, resourceRegistry);
+        RequestDispatcher requestDispatcher = createRequestDispatcher(objectMapper, exceptionMapperRegistry,
+                resourceRegistry, queryParamsBuilder);
 
-        PathBuilder pathBuilder = new PathBuilder(resourceRegistry);
-
-        return new KatharsisHandler(objectMapper, queryParamsBuilder, webPath,
-                pathBuilder, parameterProviderFactory, requestDispatcher);
+        return new KatharsisHandler(objectMapper, requestDispatcher, parameterProviderFactory, apiMountPath);
     }
 
     private static RequestDispatcher createRequestDispatcher(@NonNull ObjectMapper objectMapper,
                                                              @NonNull ExceptionMapperRegistry exceptionMapperRegistry,
-                                                             @NonNull ResourceRegistry resourceRegistry) {
+                                                             @NonNull ResourceRegistry resourceRegistry,
+                                                             @NonNull QueryParamsBuilder queryParamsBuilder) {
         TypeParser typeParser = new TypeParser();
-        ControllerRegistryBuilder controllerRegistryBuilder =
-                new ControllerRegistryBuilder(resourceRegistry, typeParser, objectMapper);
-
-        ControllerRegistry controllerRegistry = controllerRegistryBuilder.build();
-        return new RequestDispatcher(controllerRegistry, exceptionMapperRegistry);
+        return new RequestDispatcher(exceptionMapperRegistry, resourceRegistry,
+                typeParser, objectMapper, queryParamsBuilder);
     }
 
     public static ResourceRegistry buildRegistry(@NonNull String packageToScan, @NonNull String webPath) {
