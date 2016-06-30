@@ -1,7 +1,7 @@
 package io.katharsis.vertx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.katharsis.repository.RepositoryMethodParameterProvider;
+import io.katharsis.repository.RepositoryParameterProvider;
 import io.vertx.ext.web.RoutingContext;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +9,12 @@ import lombok.RequiredArgsConstructor;
 import java.lang.reflect.Method;
 
 /**
- * The {@link RepositoryMethodParameterProvider RepositoryMethodParameterProvider}
+ * The {@link RepositoryParameterProvider RepositoryMethodParameterProvider}
  * allows you to inject object into your repository methods.
  */
 @Data
 @RequiredArgsConstructor
-public class DefaultParameterProvider implements RepositoryMethodParameterProvider {
+public class DefaultParameterProvider implements RepositoryParameterProvider {
 
     private final ObjectMapper mapper;
     private final RoutingContext ctx;

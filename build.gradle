@@ -32,7 +32,7 @@ allprojects {
     }
 
     ext {
-        katharsisVersion = '2.4.1-SNAPSHOT'
+        katharsisVersion = '2.99.0-SNAPSHOT'
         lombokVersion = '1.16.6'
         reflectionsVersion = '0.9.9'
         slf4jVersion = '1.7.13'

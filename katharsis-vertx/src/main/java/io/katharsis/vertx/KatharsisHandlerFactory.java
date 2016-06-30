@@ -2,18 +2,17 @@ package io.katharsis.vertx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Throwables;
-import io.katharsis.dispatcher.RequestDispatcher;
+import io.katharsis.dispatcher.JsonApiDispatcher;
+import io.katharsis.dispatcher.JsonApiDispatcherImpl;
+import io.katharsis.dispatcher.handlers.JsonApiDelete;
+import io.katharsis.dispatcher.handlers.JsonApiGet;
+import io.katharsis.dispatcher.handlers.JsonApiPatch;
+import io.katharsis.dispatcher.handlers.JsonApiPost;
+import io.katharsis.dispatcher.registry.RepositoryRegistryImpl;
+import io.katharsis.dispatcher.registry.api.RepositoryRegistry;
 import io.katharsis.errorhandling.mapper.ExceptionMapperRegistry;
 import io.katharsis.errorhandling.mapper.ExceptionMapperRegistryBuilder;
 import io.katharsis.jackson.JsonApiModuleBuilder;
-import io.katharsis.locator.SampleJsonServiceLocator;
-import io.katharsis.queryParams.DefaultQueryParamsParser;
-import io.katharsis.queryParams.QueryParamsBuilder;
-import io.katharsis.resource.field.ResourceFieldNameTransformer;
-import io.katharsis.resource.information.ResourceInformationBuilder;
-import io.katharsis.resource.registry.ResourceRegistry;
-import io.katharsis.resource.registry.ResourceRegistryBuilder;
-import io.katharsis.utils.parser.TypeParser;
 import io.vertx.core.json.Json;
 import lombok.NonNull;
 
@@ -37,33 +36,20 @@ public class KatharsisHandlerFactory {
                                           @NonNull ObjectMapper objectMapper,
                                           @NonNull ParameterProviderFactory parameterProviderFactory) {
 
-        QueryParamsBuilder queryParamsBuilder = new QueryParamsBuilder(new DefaultQueryParamsParser());
-        ExceptionMapperRegistry exceptionMapperRegistry = buildExceptionMapperRegistry(packagesToScan);
-        ResourceRegistry resourceRegistry = buildRegistry(packagesToScan, apiMountPath);
+//        QueryParamsBuilder queryParamsBuilder = new QueryParamsBuilder(new DefaultQueryParamsParser());
+//        ExceptionMapperRegistry exceptionMapperRegistry = buildExceptionMapperRegistry(packagesToScan);
 
-        JsonApiModuleBuilder jsonApiModuleBuilder = new JsonApiModuleBuilder();
-        objectMapper.registerModule(jsonApiModuleBuilder.build(resourceRegistry));
+        objectMapper.registerModule(JsonApiModuleBuilder.create());
 
-        RequestDispatcher requestDispatcher = createRequestDispatcher(objectMapper, exceptionMapperRegistry,
-                resourceRegistry, queryParamsBuilder);
+        RepositoryRegistry registry = RepositoryRegistryImpl.build(packagesToScan, apiMountPath);
 
+        JsonApiDispatcher requestDispatcher = createRequestDispatcher(registry);
         return new KatharsisHandler(objectMapper, requestDispatcher, parameterProviderFactory, apiMountPath);
     }
 
-    private static RequestDispatcher createRequestDispatcher(@NonNull ObjectMapper objectMapper,
-                                                             @NonNull ExceptionMapperRegistry exceptionMapperRegistry,
-                                                             @NonNull ResourceRegistry resourceRegistry,
-                                                             @NonNull QueryParamsBuilder queryParamsBuilder) {
-        TypeParser typeParser = new TypeParser();
-        return new RequestDispatcher(exceptionMapperRegistry, resourceRegistry,
-                typeParser, objectMapper, queryParamsBuilder);
-    }
-
-    public static ResourceRegistry buildRegistry(@NonNull String packageToScan, @NonNull String webPath) {
-        ResourceRegistryBuilder registryBuilder = new ResourceRegistryBuilder(new SampleJsonServiceLocator(),
-                new ResourceInformationBuilder(new ResourceFieldNameTransformer()));
-
-        return registryBuilder.build(packageToScan, webPath);
+    private static JsonApiDispatcher createRequestDispatcher(@NonNull RepositoryRegistry registry) {
+        return new JsonApiDispatcherImpl(new JsonApiGet(registry),
+                new JsonApiPost(registry), new JsonApiPatch(registry), new JsonApiDelete(registry));
     }
 
     private static ExceptionMapperRegistry buildExceptionMapperRegistry(String resourceSearchPackage) {

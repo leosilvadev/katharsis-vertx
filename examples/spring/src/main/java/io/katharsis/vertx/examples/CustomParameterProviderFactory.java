@@ -1,7 +1,7 @@
 package io.katharsis.vertx.examples;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.katharsis.repository.RepositoryMethodParameterProvider;
+import io.katharsis.repository.RepositoryParameterProvider;
 import io.katharsis.vertx.ParameterProviderFactory;
 import io.vertx.ext.web.RoutingContext;
 import lombok.AllArgsConstructor;
@@ -23,17 +23,17 @@ public class CustomParameterProviderFactory implements ParameterProviderFactory 
     private ApplicationContext context;
 
     @Override
-    public RepositoryMethodParameterProvider provider(RoutingContext ctx) {
+    public RepositoryParameterProvider provider(RoutingContext ctx) {
         return new SpringParameterProvider(mapper, ctx, context);
     }
 
     /**
-     * The {@link RepositoryMethodParameterProvider RepositoryMethodParameterProvider}
+     * The {@link RepositoryParameterProvider RepositoryMethodParameterProvider}
      * allows you to inject object into your repository methods.
      */
     @Data
     @RequiredArgsConstructor
-    public static class SpringParameterProvider implements RepositoryMethodParameterProvider {
+    public static class SpringParameterProvider implements RepositoryParameterProvider {
 
         private final ObjectMapper mapper;
         private final RoutingContext ctx;

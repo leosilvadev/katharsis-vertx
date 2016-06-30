@@ -1,7 +1,7 @@
 package io.katharsis.vertx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.katharsis.repository.RepositoryMethodParameterProvider;
+import io.katharsis.repository.RepositoryParameterProvider;
 import io.vertx.ext.web.RoutingContext;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +20,7 @@ public class DefaultParameterProviderFactory implements ParameterProviderFactory
     private ObjectMapper mapper;
 
     @Override
-    public RepositoryMethodParameterProvider provider(RoutingContext ctx) {
+    public RepositoryParameterProvider provider(RoutingContext ctx) {
         return new DefaultParameterProvider(mapper, ctx);
     }
 

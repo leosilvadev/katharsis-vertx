@@ -1,6 +1,6 @@
 package io.katharsis.vertx;
 
-import io.katharsis.repository.RepositoryMethodParameterProvider;
+import io.katharsis.repository.RepositoryParameterProvider;
 import io.vertx.ext.web.RoutingContext;
 
 /**
@@ -8,6 +8,6 @@ import io.vertx.ext.web.RoutingContext;
  */
 public interface ParameterProviderFactory {
 
-    RepositoryMethodParameterProvider provider(RoutingContext ctx);
+    RepositoryParameterProvider provider(RoutingContext ctx);
 
 }
