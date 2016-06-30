@@ -1,0 +1,121 @@
+import java.text.SimpleDateFormat
+
+plugins {
+    id 'java'
+    id 'osgi'
+    id 'idea'
+    id 'com.jfrog.bintray' version '1.6'
+    id 'maven-publish'
+    id 'ru.vyarus.pom' version '1.0.0'
+}
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+
+    compile project(':katharsis-vertx')
+
+    compile "org.slf4j:slf4j-api:${slf4jVersion}"
+
+    compile "org.springframework:spring-core:${springVersion}"
+    compile "org.springframework:spring-context:${springVersion}"
+    compile "org.springframework:spring-beans:${springVersion}"
+
+    testCompile "io.vertx:vertx-unit:${vertxVersion}"
+    testCompile "junit:junit:4.11"
+}
+
+bintray {
+
+    def projectVersion = version
+
+    user = bintrayUser
+    key = bintrayApiKey
+    publications = ['katharsis']
+
+    publish = true
+
+    pkg {
+        repo = 'maven'
+        name = 'katharsis-vertx'
+        userOrg = 'netdava'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/katharsis-project/katharsis-vertx'
+        websiteUrl = 'http://katharsis.io/'
+        desc = 'Elegant and powerful HATEOAS for Java based on JSON API standard'
+        issueTrackerUrl = 'https://github.com/katharsis-project/katharsis-vertx/issues'
+        labels = ['java', 'json-api', 'rest', 'web', 'api', 'services']
+        publicDownloadNumbers = true
+        githubRepo = 'katharsis-project/katharsis-vertx'
+
+        version {
+            name = projectVersion.toString()
+            desc = 'Vertx integration for Katharsis json-api library'
+            released = new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss.SSSZZ').format(new Date())
+            vcsTag = projectVersion.toString()
+        }
+    }
+}
+
+task sourceJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: 'javadoc') {
+    from javadoc.destinationDir
+    classifier = 'javadoc'
+}
+
+pom {
+    description 'Vertx integration for Katharsis json-api library'
+    url 'https://github.com/katharsis-project/katharsis-vertx'
+    licenses {
+        license {
+            name "The Apache License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution 'repo'
+        }
+    }
+    scm {
+        url 'https://github.com/katharsis-project/katharsis-vertx'
+        connection 'scm:https://github.com/katharsis-project/katharsis-vertx.git'
+        developerConnection 'scm:git@github.com:katharsis-project/katharsis-vertx.git'
+    }
+    developers {
+        developer {
+            id "ieugen"
+            name "Ioan Eugen Stan"
+            email "ieugen@netdava.com"
+        }
+    }
+}
+
+publishing {
+    publications {
+        katharsis(MavenPublication) {
+            groupId 'io.katharsis'
+            artifactId 'katharsis-vertx-spring'
+            from components.java
+
+            artifact sourceJar {
+                classifier 'sources'
+            }
+            artifact javadocJar {
+                classifier 'javadoc'
+            }
+        }
+    }
+}
+
+idea {
+    module {
+        scopes.PROVIDED.plus += [configurations.compileOnly]
+    }
+}

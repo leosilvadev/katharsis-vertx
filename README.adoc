@@ -2,8 +2,6 @@
 
 Integration and example code.
 
-WARNING: Work in progress. Katharsis-Vertx API is not stable yet as we do not support all use cases. Expect change.
-
 == Using
 
 We deploy on https://bintray.com . You find detailed descriptions on how to consume this library on the project page
@@ -18,20 +16,18 @@ https://bintray.com/netdava/maven/katharsis-vertx/ . Press `Set me up` button.
 
 .Use in your code
 ----
-    Router katharsisRouter = KatharsisRestApi.createRouter(vertx, "package.to.scan", "/api");
-    router.mountSubRouter("/api/projects", katharsisRouter);
-    router.mountSubRouter("/api/tasks", katharsisRouter);
+    KatharsisHandler katharsisGlue = KatharsisHandlerFactory.create(Main.class.getPackage().getName(), "/api");
+    router.route("/api/*").handler(katharsisGlue);
+
 ----
 
 .Advanced usage
 ----
     ParameterProviderFactory factory = new SpringParameterProviderFactory(Json.mapper, context);
-    KatharsisHandlerFactory katharsisGlue = KatharsisHandlerFactory.create(Main.class.getPackage().getName(), "/api",
-            Json.mapper, factory);
 
-    Router katharsisRouter = KatharsisRestApi.createRouter(vertx, katharsisGlue);
-    router.mountSubRouter("/api/projects", katharsisRouter);
-    router.mountSubRouter("/api/tasks", katharsisRouter);
+    KatharsisHandler katharsisGlue = KatharsisHandlerFactory.create(Main.class.getPackage().getName(), "/api",
+            Json.mapper, new CustomParameterProviderFactory(Json.mapper, context));
+    router.route("/api/*").handler(katharsisGlue);
 ----
 
 == Contributing
